@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       - name: Validate repository idea structure
         run: |
@@ -35,25 +35,39 @@ jobs:
                   print(f"- {item}")
               sys.exit(1)
 
+          import re
+
           required_sections = [
-              "## Summary",
-              "## Problem",
-              "## Proposal",
-              "## Risks And Tradeoffs",
-              "## Alternatives Considered",
-              "## Success Criteria",
+              "summary",
+              "problem",
+              "proposal",
+              "scope",
+              "risks and tradeoffs",
+              "alternatives considered",
+              "success criteria",
           ]
           proposal_dir = Path("ideas/proposals")
           proposal_files = sorted(
               path for path in proposal_dir.glob("*.md") if path.name.lower() != "readme.md"
           )
+          filename_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
           for proposal in proposal_files:
+              if not filename_pattern.match(proposal.name):
+                  print(
+                      f"{proposal} must follow filename convention: YYYY-MM-DD-short-kebab-name.md"
+                  )
+                  sys.exit(1)
               text = proposal.read_text(encoding="utf-8")
-              missing_sections = [section for section in required_sections if section not in text]
+              headings = {
+                  line[3:].strip().lower()
+                  for line in text.splitlines()
+                  if line.startswith("## ")
+              }
+              missing_sections = [section for section in required_sections if section not in headings]
               if missing_sections:
                   print(f"{proposal} is missing required sections:")
                   for section in missing_sections:
-                      print(f"- {section}")
+                      print(f"- ## {section.title()}")
                   sys.exit(1)
 
           print("Repository structure validation passed.")
