@@ -1,0 +1,64 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Validate repository idea structure
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+
+          required_files = [
+              Path("AGENTS.md"),
+              Path(".github/pull_request_template.md"),
+              Path("ideas/templates/feature-idea.md"),
+              Path("ideas/proposals/.gitkeep"),
+          ]
+          missing = [str(path) for path in required_files if not path.exists()]
+          if missing:
+              print("Missing required files:")
+              for item in missing:
+                  print(f"- {item}")
+              sys.exit(1)
+
+          required_sections = [
+              "## Summary",
+              "## Problem",
+              "## Proposal",
+              "## Risks And Tradeoffs",
+              "## Alternatives Considered",
+              "## Success Criteria",
+          ]
+          proposal_dir = Path("ideas/proposals")
+          proposal_files = sorted(
+              path for path in proposal_dir.glob("*.md") if path.name.lower() != "readme.md"
+          )
+          for proposal in proposal_files:
+              text = proposal.read_text(encoding="utf-8")
+              missing_sections = [section for section in required_sections if section not in text]
+              if missing_sections:
+                  print(f"{proposal} is missing required sections:")
+                  for section in missing_sections:
+                      print(f"- {section}")
+                  sys.exit(1)
+
+          print("Repository structure validation passed.")
+          PY
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
