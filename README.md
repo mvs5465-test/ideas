@@ -20,3 +20,5 @@ Collaborative idea proposals via pull requests.
 1. Copy `ideas/templates/feature-idea.md` into `ideas/proposals/` with a clear filename.
 2. Fill each section with concrete details and tradeoffs.
 3. Open a PR and request review.
+
+For non-feature ideas (process changes, architecture explorations, retrospectives), reuse the same template and adapt the `Proposal`/`Rollout Plan` sections to fit the idea type.

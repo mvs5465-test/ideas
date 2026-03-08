@@ -26,7 +26,6 @@ jobs:
               Path("AGENTS.md"),
               Path(".github/pull_request_template.md"),
               Path("ideas/templates/feature-idea.md"),
-              Path("ideas/proposals/.gitkeep"),
           ]
           missing = [str(path) for path in required_files if not path.exists()]
           if missing:
@@ -39,11 +38,13 @@ jobs:
 
           required_sections = [
               "summary",
+              "status",
               "problem",
               "proposal",
               "scope",
               "risks and tradeoffs",
               "alternatives considered",
+              "rollout plan",
               "success criteria",
           ]
           proposal_dir = Path("ideas/proposals")

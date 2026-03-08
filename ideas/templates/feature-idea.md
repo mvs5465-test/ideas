@@ -4,6 +4,10 @@
 
 One paragraph describing the idea and why it matters.
 
+## Status
+
+Proposed | Accepted | Rejected | Superseded
+
 ## Problem
 
 What specific problem are we solving? Who is affected?

@@ -13,6 +13,7 @@ This repo is for collaborating on ideas via pull requests. Every idea should be 
 3. Keep writing concise and concrete. Prefer tradeoffs, risks, and measurable success criteria over abstract brainstorming.
 4. Use feature branches and pull requests. Do not push directly to `main`.
 5. PR titles and commit messages must use Conventional Commits.
+6. Include a `## Status` field in proposals and keep it current (`Proposed`, `Accepted`, `Rejected`, `Superseded`).
 
 ## Required PR Description Preface For Feature Ideas
 
