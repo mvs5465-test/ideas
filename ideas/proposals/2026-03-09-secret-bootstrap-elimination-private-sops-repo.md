@@ -6,7 +6,7 @@ Minimize imperative secret creation in `quick-start.sh` by moving runtime/master
 
 ## Status
 
-Proposed
+Rejected
 
 ## Problem
 
