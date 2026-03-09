@@ -2,7 +2,7 @@
 
 ## Summary
 
-Eliminate imperative secret creation in `quick-start.sh` by moving bootstrap and runtime secret material to declarative, encrypted manifests stored in a separate private repo. Use SOPS with age keys so `colima delete && ./quick-start.sh` converges without manual `kubectl create secret` steps.
+Minimize imperative secret creation in `quick-start.sh` by moving runtime/master secret material to declarative, encrypted manifests stored in a separate private repo. Use SOPS with age keys and a defined ArgoCD decryption plugin path so bootstrap is reduced to a small documented root-of-trust step.
 
 ## Status
 
@@ -22,34 +22,43 @@ Adopt a two-repo secrets model:
 1. Keep app/infra manifests in existing repos (`local-k8s-argocd`, `local-k8s-apps`).
 2. Create a separate private repo for encrypted Kubernetes Secret manifests.
 3. Encrypt secret manifests with SOPS using age recipients.
-4. Configure ArgoCD to sync that private repo and decrypt at render time.
-5. Remove imperative secret creation from `quick-start.sh` once parity is verified.
+4. Configure ArgoCD repo-server for `kustomize-sops` (KSOPS) decryption:
+   - repo-server init container installs `sops` + `ksops`
+   - custom kustomize plugin path enabled for repo-server
+   - age private key provided to repo-server from a bootstrap secret
+5. Keep only minimal bootstrap for root trust material (`age` private key and private-repo access credential), then remove other imperative secret creation from `quick-start.sh` once parity is verified.
 
 Target secrets to migrate first:
-- `argocd-repo-creds`
 - `ghcr-master-secret`
 - `github-pr-slack-notifier-master-secret`
 - `grafana-alerting-master-secret`
 - `velero-minio-master-secret`
 
+Bootstrap carve-out (explicitly not migrated in phase 1):
+- `argocd-repo-creds` (or equivalent private repo access secret) remains bootstrap-provided to avoid circular dependency when ArgoCD clones the private secrets repo.
+
 ## Scope
 
 In scope:
 - private secrets repo setup and ArgoCD integration
-- SOPS + age key model definition
+- SOPS + age key model definition and key custody policy
+- explicit ArgoCD decryption mechanism (`kustomize-sops`/KSOPS in repo-server)
 - migration of current bootstrap-created secrets to encrypted declarative manifests
-- `quick-start.sh` cleanup for those secret steps
+- `quick-start.sh` cleanup for non-bootstrap secret steps
+- ESO compatibility: keep secret names and `external-secrets` namespace targets unchanged so existing fan-out manifests continue to work
 
 Out of scope:
 - replacing ESO fan-out model
 - full external vault migration (AWS/GCP/Vault)
 - rotating every app credential immediately beyond migration baseline
+- eliminating all bootstrap imperatives in phase 1 (root-of-trust bootstrap remains)
 
 ## Risks And Tradeoffs
 
 - Decryption key handling becomes the critical trust anchor; key loss blocks decryption.
 - Separate private repo adds one more sync dependency and access-control surface.
 - Misconfigured SOPS/Argo integration can block first-boot until fixed.
+- Private repo availability becomes part of recovery path; Git provider outage can delay secret sync.
 
 ## Alternatives Considered
 
@@ -68,23 +77,29 @@ Preferred approach: SOPS + age + private repo for minimal-runtime overhead and s
 
 1. Foundation
 - Create private repo for encrypted secrets.
-- Generate age keypair and define key custody/backup policy.
-- Add ArgoCD repo access and AppProject allowlist entry.
+- Generate age keypair and implement key custody baseline:
+  - primary key in local secure secret storage (for example password manager secure note)
+  - second encrypted offline backup copy
+  - recovery test documented
+- Add ArgoCD repo access and AppProject allowlist entry for the private repo.
+- Add repo-server KSOPS/SOPS plugin wiring in `local-k8s-argocd`.
+- Document the one remaining bootstrap step (provision age private key + private-repo access secret in `argocd`).
 
 2. Pilot
 - Migrate one low-risk secret path and validate sync/decrypt/app behavior.
 
 3. Full migration
-- Migrate all current bootstrap-created secrets.
+- Migrate master/runtime secrets to encrypted manifests in private repo (excluding explicit bootstrap carve-outs).
 - Keep old `quick-start.sh` steps behind a temporary fallback flag during validation window.
 
 4. Cutover
-- Remove imperative secret creation blocks from `quick-start.sh`.
+- Remove imperative secret creation blocks from `quick-start.sh` for migrated secret set.
 - Run full from-scratch cluster rebuild validation.
 
 ## Success Criteria
 
-- Fresh cluster bootstrap reaches healthy state without any manual secret creation commands.
+- Fresh cluster bootstrap reaches healthy state with only documented root-of-trust bootstrap secrets.
 - All migrated secrets are sourced from encrypted manifests in the private repo.
-- ESO fan-out dependent workloads receive expected runtime secrets after sync.
-- `quick-start.sh` no longer contains `kubectl create secret` logic for migrated secret set.
+- ESO fan-out dependent workloads receive expected runtime secrets after sync from unchanged secret names in `external-secrets`.
+- `quick-start.sh` no longer contains `kubectl create secret` logic for migrated non-bootstrap secret set.
+- Recovery runbook explicitly documents and verifies bootstrap prerequisites (`age` key + private repo credential).
