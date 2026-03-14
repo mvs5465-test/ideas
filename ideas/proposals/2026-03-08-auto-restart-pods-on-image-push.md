@@ -6,7 +6,7 @@ On our toy homelab cluster, pods can keep running old code after new images are 
 
 ## Status
 
-Proposed
+Complete
 
 ## Problem
 
