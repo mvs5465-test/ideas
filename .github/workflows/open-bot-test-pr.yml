@@ -1,0 +1,114 @@
+name: Open Bot Test PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      idea_slug:
+        description: Short kebab-case suffix for the proposal filename
+        required: false
+        default: actions-bot-review-test
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: create_artifact
+        name: Create proposal branch and file
+        env:
+          IDEA_SLUG: ${{ inputs.idea_slug }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          DATE="$(date +%F)"
+          SAFE_SLUG="$(printf '%s' "${IDEA_SLUG}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')"
+          SAFE_SLUG="${SAFE_SLUG#-}"
+          SAFE_SLUG="${SAFE_SLUG%-}"
+          if [ -z "${SAFE_SLUG}" ]; then
+            SAFE_SLUG="actions-bot-review-test"
+          fi
+
+          BRANCH="bot/${SAFE_SLUG}-${RUN_ID}"
+          FILE="ideas/proposals/${DATE}-${SAFE_SLUG}-${RUN_ID}.md"
+
+          git switch -c "${BRANCH}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          cat > "${FILE}" <<EOF
+          # ${SAFE_SLUG}
+
+          ## Summary
+
+          This proposal exists to create a pull request authored by GitHub Actions so review submission can be tested against a non-user actor.
+
+          ## Status
+
+          Proposed
+
+          ## Problem
+
+          Review automation needs a safe target PR that is not opened by the repository owner account.
+
+          ## Proposal
+
+          Add this temporary proposal file through a workflow-authored branch and PR.
+
+          ## Scope
+
+          In scope: creating one small PR for review testing.
+          Out of scope: shipping product behavior or merging the resulting PR.
+
+          ## Risks And Tradeoffs
+
+          The repo accumulates a disposable proposal file and PR metadata that should be cleaned up after testing.
+
+          ## Alternatives Considered
+
+          Use a GitHub App token. That is more flexible but unnecessary when the built-in Actions token is already allowed to open PRs.
+
+          ## Rollout Plan
+
+          Trigger the workflow manually, verify the PR author is \`github-actions[bot]\`, run the review test, then close the PR when finished.
+
+          ## Success Criteria
+
+          A pull request is opened from a workflow-created branch and the PR author is not \`${{ github.triggering_actor }}\`.
+          EOF
+
+          git add "${FILE}"
+          git commit -m "feat: add actions bot review test proposal"
+          git push --set-upstream origin "${BRANCH}"
+
+          {
+            echo "branch=${BRANCH}"
+            echo "file=${FILE}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > pr-body.md <<'EOF'
+          Reviewer special instructions: play devil's advocate. Don't just approve because it sounds good. Try to poke meaningful holes in the plan. Suggest improvements or ideas that may not be present.
+
+          This PR was opened by the `Open Bot Test PR` workflow to provide a non-user-authored PR for review testing.
+
+          Artifact:
+          - `${{ steps.create_artifact.outputs.file }}`
+          EOF
+
+          gh pr create \
+            --base main \
+            --head "${{ steps.create_artifact.outputs.branch }}" \
+            --title "feat: add actions bot review test proposal" \
+            --body-file pr-body.md

@@ -6,7 +6,7 @@ Build a GitOps-managed disaster recovery layer for the local cluster that contin
 
 ## Status
 
-Proposed
+Rejected
 
 ## Problem
 
