@@ -52,19 +52,35 @@ Use one localhost service as the live coordination source of truth for active se
 
 3. Workers must report transitions to the dashboard
 
-Every worker phase transition should generate a structured dashboard update. Minimum transition payload:
+Every worker phase transition should generate one structured message that the control plane ingests over localhost HTTP. Workers should be explicitly expected to send these updates with `curl` or an equivalent simple HTTP client and treat a successful response as part of completing the phase transition.
 
-- worker ID
-- current phase
-- previous phase
-- repo path
-- branch or worktree
-- owned artifact
-- short status line
-- next irreversible step
-- timestamp
+Recommended MVP write schema:
 
-This turns "status updates" from optional chat behavior into the normal mechanism for coordination. The operator should be able to answer "who is active, stale, blocked, or ready?" from one board.
+```json
+{
+  "worker_id": "worker-20260315-example",
+  "event_type": "phase_transition",
+  "current_phase": "implementing",
+  "previous_phase": "planned",
+  "repo_path": "/Users/matthewschwartz/projects/ideas",
+  "branch": "feat/example-slice",
+  "worktree": "/Users/matthewschwartz/projects/_worktrees/example",
+  "owned_artifact": "ideas/proposals/2026-03-15-overlord-codex-army-control-plane.md",
+  "status_line": "rewriting rollout plan for parallel worker execution",
+  "next_irreversible_step": "commit proposal updates after review pass",
+  "blocker": null,
+  "note": "working only in proposal body; no template changes",
+  "timestamp": "2026-03-15T05:25:00Z"
+}
+```
+
+Recommended MVP endpoints:
+
+- `POST /api/workers/events` accepts the unified worker event message and returns success or a validation error
+- `GET /api/workers` returns the current worker roster and latest known state for the operator
+- `GET /api/workers/:worker_id` returns detailed worker state so the general can query one worker directly when needed
+
+This turns "status updates" from optional chat behavior into the normal mechanism for coordination. The operator should be able to answer "who is active, stale, blocked, or ready?" from one board, and the general should have a clean read path for worker state without scraping logs.
 
 4. Short bot notes in the control pane
 
@@ -87,13 +103,14 @@ Local precedent suggests the right split:
 
 - `overlord` already points toward a lightweight localhost control plane with a small web UI and minimal dependency posture
 - `snapreview` shows the strongest recent precedent for polished operator-facing styling with Tailwind CSS plus daisyUI
+- deeper integration between the operating model and the app may be worth revisiting later, but that is out of scope for the MVP proposal
 
 Recommendation:
 
 - keep the product localhost-first and implementation-light
 - prefer a simple web UI over a desktop shell
 - bias toward server-rendered or otherwise lightweight app architecture
-- if richer styling is needed, reuse the proven Tailwind CSS plus daisyUI approach from local precedent rather than inventing a bespoke design system
+- use Tailwind CSS plus daisyUI for the app UI; treat that styling stack as a requirement, not a maybe
 
 The visual goal is an operator board that is compact, clear, and good enough to keep open all session.
 
@@ -124,7 +141,7 @@ In scope:
 
 Out of scope:
 
-- implementing the app in this proposal
+- implementing the app as part of this proposal document; implementation happens afterward if the proposal is accepted
 - autonomous scheduling, worker spawning, or multi-host orchestration
 - replacing git, GitHub, repo-local instructions, or human review
 - building a heavyweight distributed system or message broker from day one
@@ -134,7 +151,8 @@ Out of scope:
 - A stronger state machine adds process overhead for trivial one-worker tasks.
 - If phase updates are too slow to send, workers will route around the system and the model will fail culturally before it fails technically.
 - A polished UI can drift into operator-overreach if it encourages micromanagement instead of fast coordination.
-- Localhost HTTP is pragmatic for workers and the browser, but it still needs basic auth, CSRF, and payload discipline.
+- Localhost HTTP is pragmatic for workers and the browser, so prompt design and worker instructions need to strongly reinforce when to post updates, how to handle retries, and what counts as a valid successful response.
+- Localhost HTTP is pragmatic for workers and the browser, but even with localhost scope the API contract still needs tight payload discipline.
 - Tailwind CSS plus daisyUI is a good styling precedent for operator surfaces, but the repo should still avoid turning a small control plane into a frontend-heavy build chain unless the value is clear.
 
 ## Alternatives Considered
@@ -163,7 +181,7 @@ Preferred approach: one integrated proposal where the worker lifecycle is the pr
 
 - define the canonical worker phases, allowed transitions, and required transition payload
 - standardize the worker output contract around repo, artifact, blocker, and next-step reporting
-- keep `WORKER_LOG.md` compatible as a summary/export surface
+- package the worker operating contract as a Codex skill and version the detailed instructions in the new `overlord` repo, effectively treating that repo as the tracked source of truth for the worker playbook
 
 2. Phase 2: build the control-plane backbone
 
@@ -177,11 +195,11 @@ Preferred approach: one integrated proposal where the worker lifecycle is the pr
 - show short phase notes directly in the control pane
 - make handoff-ready and blocked queues visually distinct
 
-4. Phase 4: tighten ergonomics and safety
+4. Phase 4: make the workflow parallel-friendly
 
-- add worker identity tokens, CSRF/session protection, and path allowlists
-- add compact filters, keyboard-friendly operator actions, and Markdown export
-- refine the UI using the lightweight `overlord` posture and the Tailwind CSS plus daisyUI precedent proven in `snapreview`
+- shape task slices and worker instructions so separate workers can execute in parallel with minimal file overlap and clear ownership boundaries
+- make conflicts obvious early by surfacing artifact ownership, overlapping repo scope, and blocked-on-worker dependencies in the board
+- refine the UI using the lightweight `overlord` posture and the required Tailwind CSS plus daisyUI stack proven in `snapreview`
 
 ## Success Criteria
 
