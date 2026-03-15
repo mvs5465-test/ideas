@@ -6,7 +6,7 @@ Unify the Codex army management model and the localhost control-plane idea into 
 
 ## Status
 
-Proposed
+Accepted
 
 ## Problem
 
