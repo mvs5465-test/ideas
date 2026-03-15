@@ -59,7 +59,7 @@ Use one localhost service as the live coordination source of truth for active se
 - stream updates to the browser UI so the operator sees state changes immediately instead of polling several places
 - keep Markdown export and `WORKER_LOG.md` style summaries as compatibility outputs, not the primary live control path
 
-This live source of truth is operational, not constitutional. The control plane may own app-specific worker protocol docs, event schemas, and session data, but it must not replace the standing instruction hierarchy in `/Users/matthewschwartz/AGENTS.md`, `~/.codex/AGENTS.md`, or repo-local instructions. Those files remain the governance source of truth for how Codex should behave across repos.
+This live source of truth is operational, not constitutional. The control plane may own app-specific worker protocol docs, event schemas, and session data, but it must not replace the standing instruction hierarchy in `~/AGENTS.md`, `~/.codex/AGENTS.md`, or repo-local instructions. Those files remain the governance source of truth for how Codex should behave across repos.
 
 3. Workers must report transitions to the dashboard
 
@@ -81,9 +81,9 @@ Recommended MVP write schema:
   "event_type": "phase_transition",
   "current_phase": "implementing",
   "previous_phase": "planned",
-  "repo_path": "/Users/matthewschwartz/projects/ideas",
+  "repo_path": "~/projects/ideas",
   "branch": "feat/example-slice",
-  "worktree": "/Users/matthewschwartz/projects/_worktrees/example",
+  "worktree": "~/projects/_worktrees/example",
   "owned_artifact": "ideas/proposals/2026-03-15-overlord-codex-army-control-plane.md",
   "status_line": "rewriting rollout plan for parallel worker execution",
   "next_irreversible_step": "commit proposal updates after review pass",
